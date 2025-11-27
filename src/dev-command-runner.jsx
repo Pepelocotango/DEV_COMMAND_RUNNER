@@ -1,55 +1,112 @@
-// --- START: src/dev-command-runner.jsx ---
 import React, { useState, useEffect } from 'react';
-import { Terminal, FolderOpen, Sun, Moon, Type, Settings, Play, Monitor, Smartphone, Trash2, Edit2, Plus, Save, X, Download } from 'lucide-react';
+import { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box, Plus, Edit2, Trash2, X, Save, ChevronDown, RotateCcw } from 'lucide-react';
 
+// Comandes per defecte
 const defaultCommands = {
   categories: [
     {
-      id: 'desktop-dev',
-      name: 'Desktop / Root',
-      icon: <Monitor size={24} />,
+      id: 'dependencies',
+      name: 'Dependències i Neteja',
+      icon: 'Package',
       commands: [
-        { id: 'fresh-start', name: 'Fresh Start', command: 'npm run fresh-start', description: 'Rebuild + Vite + Electron', directory: './' },
-        { id: 'electron-dev', name: 'Electron Dev', command: 'npm run electron-dev', description: 'Només dev server', directory: './' },
-        { id: 'clean-install', name: 'Clean Install', command: 'rm -rf node_modules package-lock.json dist && npm install', description: 'Neteja profunda', directory: './' },
+        { id: 'npm-install', name: 'Instal·lació Estàndard', command: 'npm install', description: 'Instal·la les dependències del package.json.', directory: './' },
+        { id: 'clean-install', name: 'Reinstal·lació Neta', command: 'rm -rf node_modules package-lock.json dist && npm install', description: 'Esborra node_modules i lockfiles per començar de zero.', directory: './' },
+      ]
+    },
+    {
+      id: 'development',
+      name: 'Desenvolupament',
+      icon: 'Monitor',
+      commands: [
+        { id: 'dev-server', name: 'Iniciar Servidor Dev', command: 'npm run dev', description: 'Arranca el servidor local amb hot-reload.', directory: './' },
+        { id: 'electron-dev', name: 'Electron Dev Mode', command: 'npm run electron-dev', description: 'Inicia només la finestra d\'Electron.', directory: './' }
       ]
     },
     {
       id: 'mobile-dev',
       name: 'Mobile App',
-      icon: <Smartphone size={24} />,
+      icon: 'Smartphone',
       commands: [
-        { id: 'mobile-reset', name: 'Mobile Reset', command: 'rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm start -- --clear', description: 'Reset total', directory: 'mobile_app' },
-        { id: 'mobile-start', name: 'Mobile Start', command: 'npm start -- --clear', description: 'Start amb neteja', directory: 'mobile_app' },
+        { id: 'mobile-reset', name: 'Mobile Reset', command: 'rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm start -- --clear', description: 'Reset total i start', directory: 'mobile_app' },
+        { id: 'mobile-start', name: 'Mobile Start', command: 'npm start -- --clear', description: 'Start amb neteja de cache', directory: 'mobile_app' },
+        { id: 'mobile-install', name: 'Mobile Install', command: 'npm install --legacy-peer-deps', description: 'Instal·lar dependències', directory: 'mobile_app' }
+      ]
+    },
+    {
+      id: 'build',
+      name: 'Build i Producció',
+      icon: 'Box',
+      commands: [
+        { id: 'build-prod', name: 'Compilar Producció', command: 'npm run build', description: 'Genera els fitxers optimitzats.', directory: './' },
+      ]
+    },
+    {
+      id: 'git',
+      name: 'Git Helpers',
+      icon: 'GitBranch',
+      commands: [
+        { id: 'git-status', name: 'Estat del Repositori', command: 'git status', description: 'Mostra canvis pendents.', directory: './' },
+        { id: 'git-pull', name: 'Actualitzar (Pull)', command: 'git pull', description: 'Descarrega canvis del remot.', directory: './' },
       ]
     }
   ]
 };
 
+// Helper per renderitzar icones
+const IconRenderer = ({ name, size = 20, className = "" }) => {
+  const icons = { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box };
+  const Icon = icons[name] || Box;
+  return <Icon size={size} className={className} />;
+};
+
 function App() {
   const [theme, setTheme] = useState('dark');
   const [projectPath, setProjectPath] = useState('');
-  const [commands, setCommands] = useState(defaultCommands);
-  const [terminalOpen, setTerminalOpen] = useState(false);
-  
-  // Estats per edició
-  const [showEditor, setShowEditor] = useState(false);
+  const [lastCopiedId, setLastCopiedId] = useState(null);
+
+  const [commandsData, setCommandsData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('dev-command-runner-data');
+      return saved ? JSON.parse(saved) : defaultCommands;
+    } catch (e) {
+      return defaultCommands;
+    }
+  });
+
+  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCommand, setEditingCommand] = useState(null);
+  const [targetCategory, setTargetCategory] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('dev-command-runner-data', JSON.stringify(commandsData));
+  }, [commandsData]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'dark';
     setTheme(savedTheme);
     const savedPath = localStorage.getItem('projectPath');
     if (savedPath) setProjectPath(savedPath);
-    
-    const savedCmds = localStorage.getItem('devCommands');
-    if (savedCmds) setCommands(JSON.parse(savedCmds));
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
+  };
+
+  const toggleCategory = (catId) => {
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [catId]: !prev[catId]
+    }));
+  };
+
+  const resetDefaults = () => {
+    if (window.confirm("Restaurar comandes per defecte?")) {
+      setCommandsData(defaultCommands);
+      localStorage.removeItem('dev-command-runner-data');
+    }
   };
 
   const selectProjectFolder = async () => {
@@ -62,224 +119,233 @@ function App() {
     }
   };
 
-  const openMasterTerminal = async () => {
-    if (!projectPath) return alert("Selecciona carpeta primer!");
-    if (window.electron) {
-      await window.electron.ipcRenderer.invoke('open-terminal', projectPath);
-      setTerminalOpen(true);
+  const copyToClipboard = async (cmd) => {
+    try {
+      await navigator.clipboard.writeText(cmd.command);
+      setLastCopiedId(cmd.id);
+      setTimeout(() => setLastCopiedId(null), 2000);
+    } catch (err) {
+      console.error('Error:', err);
     }
   };
 
-  const sendCommand = async (cmd) => {
-    if (!projectPath) return alert("Selecciona carpeta primer!");
-    
-    // Gestió de directoris (cd bàsic)
-    let fullCommand = cmd.command;
-    
-    // Si la comanda requereix un subdirectori, afegim el cd al principi
-    if (cmd.directory && cmd.directory !== './' && cmd.directory !== '.') {
-      // cd directory && comanda
-      fullCommand = `cd ${cmd.directory} && ${cmd.command}`;
-    } else {
-      // Si estem a l'arrel, potser volem assegurar-nos de tornar-hi si la terminal s'ha mogut?
-      // Opcional: fullCommand = `cd ${projectPath} && ${cmd.command}`;
-      // Per ara ho deixem simple.
+  const openTerminal = (directory) => {
+    if (!projectPath) return alert("Selecciona carpeta!");
+    let cwd = projectPath;
+    if (directory && directory !== './' && directory !== '.') {
+      // Simple path join logic if path module not available in renderer
+      cwd = projectPath.endsWith('\\') || projectPath.endsWith('/')
+        ? projectPath + directory
+        : projectPath + '/' + directory;
     }
-
     if (window.electron) {
-      const res = await window.electron.ipcRenderer.invoke('send-text-to-terminal', fullCommand);
-      if (!res.success) {
-        alert(res.msg);
-        setTerminalOpen(false); // Reset estat si falla
+      window.electron.ipcRenderer.invoke('open-terminal', cwd);
+    }
+  };
+
+  const handleAddCommand = (catId) => {
+    setTargetCategory(catId);
+    setEditingCommand(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditCommand = (catId, cmd) => {
+    setTargetCategory(catId);
+    setEditingCommand(cmd);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteCommand = (catId, cmdId) => {
+    if (!window.confirm("Eliminar comanda?")) return;
+    const newCategories = commandsData.categories.map(cat => {
+      if (cat.id === catId) {
+        return { ...cat, commands: cat.commands.filter(c => c.id !== cmdId) };
       }
-    }
+      return cat;
+    });
+    setCommandsData({ categories: newCategories });
   };
 
-  // --- CRUD Functions (Editor) ---
-  const saveCommands = (newCmds) => {
-    setCommands(newCmds);
-    localStorage.setItem('devCommands', JSON.stringify(newCmds));
-  };
-  
-  const handleEdit = (cmd, catId) => {
-    setEditingCommand({ command: { ...cmd }, categoryId: catId });
-    setShowEditor(true);
-  };
-
-  const handleAdd = (catId) => {
-    const newCmd = { id: `cmd-${Date.now()}`, name: 'Nova Comanda', command: 'echo "hola"', description: '', directory: './' };
-    setEditingCommand({ command: newCmd, categoryId: catId });
-    setShowEditor(true);
-  };
-
-  const handleDelete = (cmdId, catId) => {
-    if(!confirm("Eliminar comanda?")) return;
-    const newCmds = { ...commands };
-    const cat = newCmds.categories.find(c => c.id === catId);
-    cat.commands = cat.commands.filter(c => c.id !== cmdId);
-    saveCommands(newCmds);
+  const saveCommand = (formData) => {
+    const newCategories = commandsData.categories.map(cat => {
+      if (cat.id === targetCategory) {
+        let newCommands = [...cat.commands];
+        if (editingCommand) {
+          newCommands = newCommands.map(c => c.id === editingCommand.id ? { ...formData, id: c.id } : c);
+        } else {
+          newCommands.push({ ...formData, id: Date.now().toString() });
+        }
+        return { ...cat, commands: newCommands };
+      }
+      return cat;
+    });
+    setCommandsData({ categories: newCategories });
+    setIsModalOpen(false);
   };
 
-  const saveEdit = () => {
-    const newCmds = { ...commands };
-    const cat = newCmds.categories.find(c => c.id === editingCommand.categoryId);
-    const idx = cat.commands.findIndex(c => c.id === editingCommand.command.id);
-    if (idx >= 0) cat.commands[idx] = editingCommand.command;
-    else cat.commands.push(editingCommand.command);
-    saveCommands(newCmds);
-    setShowEditor(false);
-  };
-
-  // --- Styles ---
   const bgClass = theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900';
   const cardClass = theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
+  const btnHover = theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
+  const commandBg = theme === 'dark' ? 'bg-black/40' : 'bg-slate-100';
 
   return (
-    <div className={`min-h-screen p-6 ${bgClass} font-sans transition-colors duration-300 flex flex-col gap-6`}>
-      
-      {/* 1. TOP BAR & PROJECT SELECTOR */}
-      <div className={`p-4 rounded-xl shadow-md border flex flex-col md:flex-row gap-4 items-center justify-between ${cardClass}`}>
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <div className="p-3 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-900/50">
-            <Terminal size={24} />
+    <div className={`min-h-screen p-6 ${bgClass} font-sans transition-colors duration-300`}>
+      <div className={`max-w-6xl mx-auto rounded-xl shadow-xl p-6 mb-8 ${cardClass} border`}>
+        <div className="flex flex-col gap-6">
+          <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-bold flex items-center gap-3">
+              <Terminal className="text-green-500" size={32} /> Dev Command Runner
+            </h1>
+            <div className="flex items-center gap-2">
+              <button onClick={resetDefaults} className={`p-2 rounded-full ${btnHover}`} title="Restaurar">
+                <RotateCcw size={20} className="text-slate-400 hover:text-red-400 transition-colors" />
+              </button>
+              <button onClick={toggleTheme} className={`p-2 rounded-full ${btnHover}`}>
+                {theme === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+              </button>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold leading-none">Dev Commander</h1>
-            <p className="text-xs opacity-50 mt-1">Project Controller</p>
-          </div>
-        </div>
 
-        <div className="flex-1 w-full flex gap-2 items-center bg-black/10 p-2 rounded-lg border border-transparent hover:border-blue-500/30 transition-all">
-          <FolderOpen className="opacity-50 ml-2" size={20} />
-          <div className="flex-1 overflow-hidden">
-            <p className="text-[10px] font-bold uppercase opacity-40">Directori del Projecte</p>
-            <p className="text-sm font-mono truncate text-blue-400 font-bold">
-              {projectPath || "⚠️ Selecciona carpeta..."}
-            </p>
-          </div>
-          <button onClick={selectProjectFolder} className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-md text-xs font-bold">
-            CANVIAR
-          </button>
-        </div>
-
-        <div className="flex gap-2">
-           <button onClick={toggleTheme} className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'}`}>
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+          <div className={`flex items-center gap-4 p-4 rounded-lg border ${theme === 'dark' ? 'bg-black/30 border-slate-600' : 'bg-slate-100 border-slate-300'}`}>
+            <FolderOpen className="opacity-50" size={24} />
+            <div className="flex-1 overflow-hidden">
+              <p className="text-xs font-bold uppercase opacity-50 tracking-wider mb-1">Carpeta del Projecte</p>
+              <p className="text-lg truncate font-mono text-blue-400 font-medium">
+                {projectPath || "⚠️ Selecciona la carpeta arrel del projecte"}
+              </p>
+            </div>
+            <button onClick={selectProjectFolder} className="px-6 py-3 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm font-bold transition-colors shadow-lg">
+              Canviar
             </button>
+          </div>
         </div>
       </div>
 
-      {/* 2. MASTER TERMINAL BUTTON */}
-      <div className="flex justify-center">
-        <button 
-          onClick={openMasterTerminal}
-          className={`
-            relative group overflow-hidden px-8 py-6 rounded-2xl border-2 transition-all duration-300 w-full max-w-3xl
-            ${terminalOpen 
-              ? 'bg-green-600/10 border-green-500 hover:bg-green-600/20' 
-              : 'bg-blue-600 hover:bg-blue-500 border-blue-400 shadow-xl shadow-blue-900/30 hover:scale-[1.02]'
-            }
-          `}
-        >
-          <div className="flex flex-col items-center gap-2 text-center">
-            {terminalOpen ? (
-              <>
-                <Terminal size={48} className="text-green-500" />
-                <span className="text-2xl font-black text-green-500 uppercase tracking-widest">Terminal Activa</span>
-                <span className="text-sm opacity-70">Clica una comanda a sota per escriure-la automàticament</span>
-              </>
-            ) : (
-              <>
-                <Play size={48} className="text-white" />
-                <span className="text-2xl font-black text-white uppercase tracking-widest">INICIAR TERMINAL EXTERNA</span>
-                <span className="text-sm text-blue-100">Obre la finestra on s'executaran les comandes</span>
-              </>
+      <div className="max-w-6xl mx-auto flex flex-col gap-6">
+        {commandsData.categories.map(category => (
+          <div key={category.id} className={`rounded-xl shadow-lg overflow-hidden border ${cardClass}`}>
+            <div className={`p-4 border-b flex items-center justify-between ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center gap-4 cursor-pointer flex-1" onClick={() => toggleCategory(category.id)}>
+                <button className={`p-1 rounded-full transition-transform ${collapsedCategories[category.id] ? '-rotate-90' : 'rotate-0'}`}>
+                  <ChevronDown size={24} />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-700' : 'bg-white shadow-sm'}`}>
+                    <IconRenderer name={category.icon} />
+                  </div>
+                  <h2 className="font-bold text-xl">{category.name}</h2>
+                  <span className="text-xs opacity-50 bg-slate-500/20 px-2 py-0.5 rounded-full">
+                    {category.commands.length} comandes
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleAddCommand(category.id)} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-green-500/20 text-green-400' : 'hover:bg-green-100 text-green-600'}`}>
+                  <Plus size={20} />
+                </button>
+                <button
+                  onClick={() => openTerminal(category.commands[0]?.directory || './')}
+                  disabled={!projectPath}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-md
+                    ${theme === 'dark' ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} 
+                    ${!projectPath ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <ExternalLink size={18} /> Terminal
+                </button>
+              </div>
+            </div>
+
+            {!collapsedCategories[category.id] && (
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {category.commands.map(cmd => (
+                  <div key={cmd.id} className="group relative">
+                    <div className={`w-full text-left p-5 rounded-xl border transition-all duration-200 flex flex-col gap-3 group-hover:shadow-lg
+                      ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700 hover:border-blue-500' : 'bg-white border-slate-200 hover:border-blue-400'}`}>
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg text-slate-200 dark:text-white">{cmd.name}</span>
+                          {lastCopiedId === cmd.id && (
+                            <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse font-bold">✓ COPIAT</span>
+                          )}
+                        </div>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleEditCommand(category.id, cmd)} className="p-1.5 hover:bg-blue-500/20 text-blue-400 rounded"><Edit2 size={16} /></button>
+                          <button onClick={() => handleDeleteCommand(category.id, cmd.id)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(cmd)}
+                        className={`font-mono text-sm p-3 rounded-lg border ${commandBg} ${theme === 'dark' ? 'border-slate-700 text-green-400' : 'border-slate-200 text-blue-700'} 
+                        text-left break-all hover:scale-[1.01] transition-transform active:scale-95 flex justify-between items-center group/cmd`}
+                      >
+                        <span>{cmd.command}</span>
+                        <Copy size={16} className="opacity-0 group-hover/cmd:opacity-100 transition-opacity" />
+                      </button>
+                      <div className="text-sm opacity-70">{cmd.description}</div>
+                    </div>
+                  </div>
+                ))}
+                {category.commands.length === 0 && (
+                  <div className="col-span-2 text-center p-8 opacity-40 border-2 border-dashed border-slate-700 rounded-xl">
+                    No hi ha comandes. Clica "+" per afegir-ne una.
+                  </div>
+                )}
+              </div>
             )}
-          </div>
-        </button>
-      </div>
-
-      {/* 3. COMMAND GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto w-full">
-        {commands.categories.map(cat => (
-          <div key={cat.id} className="space-y-4">
-             <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                <h2 className="text-xl font-bold flex items-center gap-2 opacity-80">
-                  {cat.icon} {cat.name}
-                </h2>
-                <button onClick={() => handleAdd(cat.id)} className="p-1 hover:bg-white/10 rounded"><Plus size={18}/></button>
-             </div>
-
-             <div className="space-y-3">
-               {cat.commands.map(cmd => (
-                 <div key={cmd.id} className={`group relative p-4 rounded-xl border-2 transition-all duration-200 
-                    ${theme === 'dark' 
-                      ? 'bg-slate-800 border-slate-700 hover:border-blue-500 hover:bg-slate-750' 
-                      : 'bg-white border-slate-200 hover:border-blue-400 hover:shadow-lg'
-                    }
-                 `}>
-                   {/* ACTION AREA (Click to send) */}
-                   <div 
-                      onClick={() => sendCommand(cmd)} 
-                      className="cursor-pointer"
-                   >
-                     <div className="flex justify-between items-start mb-3">
-                       <h3 className="font-bold text-lg">{cmd.name}</h3>
-                       <Type size={20} className="opacity-20 group-hover:opacity-100 group-hover:text-blue-500 transition-opacity" />
-                     </div>
-                     
-                     <div className={`p-3 rounded-lg font-mono text-sm break-all leading-relaxed
-                        ${theme === 'dark' ? 'bg-black/30 text-green-400' : 'bg-slate-100 text-slate-700'}
-                     `}>
-                       {cmd.directory && cmd.directory !== './' && <span className="text-yellow-500 mr-2">cd {cmd.directory} &&</span>}
-                       {cmd.command}
-                     </div>
-                     
-                     {cmd.description && <p className="mt-2 text-xs opacity-50 italic">{cmd.description}</p>}
-                   </div>
-
-                   {/* EDIT TOOLS */}
-                   <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => {e.stopPropagation(); handleEdit(cmd, cat.id)}} className="p-1.5 bg-slate-600 text-white rounded hover:bg-blue-600"><Edit2 size={12}/></button>
-                      <button onClick={(e) => {e.stopPropagation(); handleDelete(cmd.id, cat.id)}} className="p-1.5 bg-slate-600 text-white rounded hover:bg-red-600"><Trash2 size={12}/></button>
-                   </div>
-                 </div>
-               ))}
-             </div>
           </div>
         ))}
       </div>
 
-      {/* EDITOR MODAL */}
-      {showEditor && editingCommand && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-lg p-6 rounded-xl shadow-2xl ${cardClass} border`}>
-            <div className="flex justify-between mb-6">
-              <h3 className="text-xl font-bold">Editar Comanda</h3>
-              <button onClick={() => setShowEditor(false)}><X /></button>
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-lg rounded-xl shadow-2xl p-6 ${cardClass} border animate-in fade-in zoom-in duration-200`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">{editingCommand ? 'Editar Comanda' : 'Nova Comanda'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-700 rounded-full"><X size={24} /></button>
             </div>
-            <div className="space-y-4">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              saveCommand({
+                name: formData.get('name'),
+                command: formData.get('command'),
+                description: formData.get('description'),
+                directory: formData.get('directory') || './'
+              });
+            }} className="flex flex-col gap-4">
               <div>
-                <label className="text-xs uppercase font-bold opacity-50">Nom</label>
-                <input className="w-full p-2 rounded bg-transparent border border-white/20" value={editingCommand.command.name} onChange={e => setEditingCommand({...editingCommand, command: {...editingCommand.command, name: e.target.value}})} />
+                <label className="block text-sm font-bold mb-1 opacity-70">Nom</label>
+                <input name="name" defaultValue={editingCommand?.name} required placeholder="Ex: Build Prod"
+                  className={`w-full p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-600' : 'bg-slate-50 border-slate-300'}`} />
               </div>
               <div>
-                <label className="text-xs uppercase font-bold opacity-50">Comanda</label>
-                <textarea rows="3" className="w-full p-2 rounded bg-transparent border border-white/20 font-mono text-sm" value={editingCommand.command.command} onChange={e => setEditingCommand({...editingCommand, command: {...editingCommand.command, command: e.target.value}})} />
+                <label className="block text-sm font-bold mb-1 opacity-70">Comanda</label>
+                <textarea name="command" defaultValue={editingCommand?.command} required placeholder="npm run build" rows={3}
+                  className={`w-full p-3 rounded-lg border font-mono text-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-600 text-green-400' : 'bg-slate-50 border-slate-300 text-blue-700'}`} />
               </div>
               <div>
-                <label className="text-xs uppercase font-bold opacity-50">Directori (relatiu)</label>
-                <input className="w-full p-2 rounded bg-transparent border border-white/20" value={editingCommand.command.directory} onChange={e => setEditingCommand({...editingCommand, command: {...editingCommand.command, directory: e.target.value}})} />
+                <label className="block text-sm font-bold mb-1 opacity-70">Descripció</label>
+                <input name="description" defaultValue={editingCommand?.description} placeholder="Què fa aquesta comanda?"
+                  className={`w-full p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-600' : 'bg-slate-50 border-slate-300'}`} />
               </div>
-              <button onClick={saveEdit} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg flex justify-center gap-2"><Save size={18}/> Guardar</button>
-            </div>
+              <div>
+                <label className="block text-sm font-bold mb-1 opacity-70">Directori (relatiu)</label>
+                <input name="directory" defaultValue={editingCommand?.directory || './'} placeholder="./"
+                  className={`w-full p-3 rounded-lg border font-mono text-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-600' : 'bg-slate-50 border-slate-300'}`} />
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg hover:bg-slate-700 transition-colors">Cancel·lar</button>
+                <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold flex items-center gap-2">
+                  <Save size={18} /> Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
-
     </div>
   );
 }
 
 export default App;
-// --- END: src/dev-command-runner.jsx ---
