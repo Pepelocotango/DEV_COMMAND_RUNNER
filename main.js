@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
 let mainWindow;
 
@@ -109,5 +110,62 @@ ipcMain.handle('open-terminal', async (event, cwd) => {
   } catch (e) {
     console.error(e);
     return { success: false, msg: e.message };
+  }
+});
+
+// --- CONFIG MANAGER IPC ---
+const configDir = path.join(app.getPath('userData'), 'configs');
+
+// Ensure config directory exists
+if (!fs.existsSync(configDir)) {
+  fs.mkdirSync(configDir, { recursive: true });
+}
+
+ipcMain.handle('get-configs', async () => {
+  try {
+    const files = fs.readdirSync(configDir);
+    return files.filter(file => file.endsWith('.json')).map(file => file.replace('.json', ''));
+  } catch (e) {
+    console.error("Error reading configs:", e);
+    return [];
+  }
+});
+
+ipcMain.handle('save-config', async (event, { name, data }) => {
+  try {
+    const filePath = path.join(configDir, `${name}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return { success: true };
+  } catch (e) {
+    console.error("Error saving config:", e);
+    return { success: false, error: e.message };
+  }
+});
+
+ipcMain.handle('load-config', async (event, name) => {
+  try {
+    const filePath = path.join(configDir, `${name}.json`);
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(data);
+    }
+    return null;
+  } catch (e) {
+    console.error("Error loading config:", e);
+    return null;
+  }
+});
+
+ipcMain.handle('delete-config', async (event, name) => {
+  try {
+    const filePath = path.join(configDir, `${name}.json`);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return { success: true };
+    }
+    return { success: false, error: "File not found" };
+  } catch (e) {
+    console.error("Error deleting config:", e);
+    return { success: false, error: e.message };
   }
 });

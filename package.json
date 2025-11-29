@@ -5,7 +5,9 @@
   "description": "Dev Command Runner",
   "main": "main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "node scripts/dev-runner.js",
+    "vite-dev": "vite",
+    "electron-dev": "electron .",
     "build": "vite build && electron-builder",
     "preview": "vite preview"
   },
@@ -17,13 +19,11 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
-    "concurrently": "^8.2.2",
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
-    "vite": "^5.0.12",
-    "wait-on": "^7.2.0"
+    "vite": "^5.0.12"
   },
   "build": {
     "appId": "com.devcommandrunner.app",
