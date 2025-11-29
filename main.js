@@ -26,7 +26,7 @@ function createWindow() {
 
   mainWindow.loadURL(startUrl);
 
-  if (isDev) {
+  if (isDev || process.env.ECR_DEBUG === '1') {
     mainWindow.webContents.openDevTools();
   }
 
