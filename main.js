@@ -121,6 +121,11 @@ if (!fs.existsSync(configDir)) {
   fs.mkdirSync(configDir, { recursive: true });
 }
 
+// Get config directory path
+ipcMain.handle('get-config-path', async () => {
+  return configDir;
+});
+
 ipcMain.handle('get-configs', async () => {
   try {
     const files = fs.readdirSync(configDir);
