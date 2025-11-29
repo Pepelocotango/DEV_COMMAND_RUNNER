@@ -82,7 +82,7 @@ function App() {
   const [isConfigManagerOpen, setIsConfigManagerOpen] = useState(false);
   const [savedConfigs, setSavedConfigs] = useState([]);
   const [newConfigName, setNewConfigName] = useState('');
-  const [currentConfig, setCurrentConfig] = useState('No configurat');
+  const [currentConfig, setCurrentConfig] = useState({ name: 'No configurat', path: '' });
   const [allCollapsed, setAllCollapsed] = useState(false);
 
   useEffect(() => {
@@ -205,6 +205,12 @@ function App() {
     if (window.electron) {
       const configs = await window.electron.ipcRenderer.invoke('get-configs');
       setSavedConfigs(configs);
+      // Obtenim la ruta de configuració actual
+      const configPath = await window.electron.ipcRenderer.invoke('get-config-path');
+      setCurrentConfig(prev => ({
+        ...prev,
+        path: configPath
+      }));
     }
   };
 
@@ -223,7 +229,7 @@ function App() {
       });
       if (result.success) {
         setNewConfigName('');
-        setCurrentConfig(newConfigName);
+        setCurrentConfig({ name: newConfigName, path: '' });
         loadConfigsList();
         alert('Configuració guardada correctament!');
       } else {
@@ -238,7 +244,8 @@ function App() {
       const data = await window.electron.ipcRenderer.invoke('load-config', name);
       if (data) {
         setCommandsData(data);
-        setCurrentConfig(name);
+        const configPath = await window.electron.ipcRenderer.invoke('get-config-path');
+        setCurrentConfig({ name, path: configPath });
         setIsConfigManagerOpen(false);
       } else {
         alert('Error carregant la configuració.');
@@ -272,14 +279,22 @@ function App() {
               <h1 className="text-3xl font-bold flex items-center gap-3">
                 <Terminal className="text-green-500" size={32} /> Dev Command Runner
               </h1>
-              <div className="mt-1 flex items-center gap-2 text-sm opacity-70">
-                <span>Configuració actual:</span>
-                <span className="font-mono bg-slate-700/50 px-2 py-0.5 rounded">{currentConfig}</span>
+              <div className="mt-1 flex flex-col gap-1 text-sm opacity-90">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Configuració:</span>
+                  <span className="font-mono bg-slate-700/50 px-2 py-0.5 rounded">{currentConfig.name}</span>
+                </div>
+                {currentConfig.path && (
+                  <div className="flex items-start gap-2 text-xs opacity-60">
+                    <span>Ruta:</span>
+                    <span className="font-mono bg-slate-800/30 px-2 py-0.5 rounded break-all">{currentConfig.path}</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button 
-                onClick={toggleAllCategories} 
+              <button
+                onClick={toggleAllCategories}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'}`}
               >
                 {allCollapsed ? 'Expandir tot' : 'Replegar tot'}
