@@ -50,7 +50,7 @@
     "linux": {
       "target": "AppImage",
       "category": "Development",
-      "icon": "build/icons/icon.png"
+      "icon": "icons/icon-512.png"
     }
   }
 }
