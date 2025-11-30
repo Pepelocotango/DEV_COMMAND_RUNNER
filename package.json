@@ -49,7 +49,7 @@
     },
     "linux": {
       "target": "AppImage",
-      "category": "Development",
+      "category": "Utility",
       "icon": "icons/icon-512.png"
     }
   }
