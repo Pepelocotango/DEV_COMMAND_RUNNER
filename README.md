@@ -1,124 +1,68 @@
-# Dev Command Runner
+# Dev Command Runner 🚀
 
-Una aplicació Electron senzilla per gestionar i copiar comandes de desenvolupament al portapapers.
+**Dev Command Runner** és una eina d'escriptori moderna dissenyada per simplificar la gestió i execució de comandes de desenvolupament. Oblida't de recordar scripts complexos o de tenir múltiples terminals obertes; centralitza-ho tot en una interfície elegant i intuïtiva.
 
-## 🚀 Característiques
+![Dev Command Runner Screenshot](/app_screenshot_dark_1764412030418.png)
 
-- ✅ **Copiar comandes al portapapers** amb un sol clic
-- ✅ **Obrir terminal** al directori correcte del projecte
-- ✅ **Compatible multiplataforma**: Windows, macOS i Linux
-- ✅ **Mode clar/fosc** personalitzable
-- ✅ **Gestió de categories** per organitzar comandes
-- ✅ **Interfície moderna** amb Tailwind CSS
+## ✨ Característiques Principals
 
-## 📦 Instal·lació
+*   **Gestor de Comandes Visual**: Organitza les teves comandes (npm, git, docker, etc.) en categories clares.
+*   **Execució Ràpida**: Copia comandes al porta-retalls o obre una terminal directament al directori correcte amb un sol clic.
+*   **Gestor de Configuracions**: Guarda i carrega diferents sets de comandes per a diferents projectes. Canvia de context en segons!
+*   **Persistència Local**: Les teves dades es guarden de forma segura al teu ordinador.
+*   **Tema Clar/Fosc**: Interfície adaptada a les teves preferències visuals.
+*   **Multi-Plataforma**: Funciona a Windows, macOS i Linux.
 
-```bash
-# Clonar el repositori
-git clone https://github.com/Pepelocotango/DEV_COMMAND_RUNNER.git
-cd DEV_COMMAND_RUNNER
+## 🛠️ Instal·lació i Ús
 
-# Instal·lar dependències
-npm install
-```
+### Requisits Previs
+*   Node.js (v16 o superior)
+*   npm
 
-## 🎯 Ús
+### Passos per començar
 
-### Mode Desenvolupament
+1.  **Clonar el repositori**:
+    ```bash
+    git clone https://github.com/Pepelocotango/DEV_COMMAND_RUNNER.git
+    cd DEV_COMMAND_RUNNER
+    ```
 
-```bash
-npm run dev
-```
+2.  **Instal·lar dependències**:
+    ```bash
+    npm install
+    ```
 
-Això iniciarà:
-- Servidor Vite a `http://localhost:5173`
-- Aplicació Electron automàticament
+3.  **Iniciar en mode desenvolupament**:
+    ```bash
+    npm run dev
+    ```
+    Això obrirà l'aplicació en una finestra d'Electron amb hot-reload actiu.
 
-### Compilar per Producció
-
-```bash
-npm run build
-```
-
-## 💡 Com Funciona
-
-1. **Selecciona la carpeta del projecte** amb el botó "Canviar"
-2. **Clica una comanda** per copiar-la al portapapers
-3. **Clica "Terminal"** per obrir una terminal al directori correcte
-4. **Enganxa la comanda** (Ctrl+V / Cmd+V) a la terminal
-5. **Executa** la comanda manualment
-
-## 🛠️ Tecnologies
-
-- **Electron** - Framework per aplicacions d'escriptori
-- **React** - Biblioteca UI
-- **Vite** - Build tool ràpid
-- **Tailwind CSS** - Framework CSS utility-first
-- **Lucide React** - Icones modernes
+4.  **Compilar per a producció**:
+    ```bash
+    npm run build
+    ```
+    Generarà l'executable a la carpeta `dist`.
 
 ## 📁 Estructura del Projecte
 
-```
-DEV_COMMAND_RUNNER/
-├── src/
-│   ├── dev-command-runner.jsx    # Component React principal
-│   ├── index.jsx                 # Punt d'entrada React
-│   └── index.css                 # Estilos Tailwind
-├── electron-app.js               # Punt d'entrada Electron
-├── main.js                       # IPC handlers
-├── preload.js                    # Script de preload segur
-├── package.json                  # Dependències
-└── vite.config.js                # Configuració Vite
-```
+*   `src/`: Codi font de l'aplicació React (Frontend).
+*   `main.js`: Procés principal d'Electron (Backend).
+*   `preload.js`: Pont segur entre Electron i React.
+*   `configs/`: (Generat automàticament) On es guarden els teus fitxers de configuració JSON.
 
-## 🔧 Configuració
+## ⚙️ Configuració
 
-Pots personalitzar les comandes editant l'objecte `defaultCommands` a `src/dev-command-runner.jsx`:
+Les configuracions es guarden automàticament a la carpeta de dades de l'usuari:
+*   **Windows**: `%APPDATA%\Dev Command Runner\configs\`
+*   **macOS**: `~/Library/Application Support/Dev Command Runner/configs/`
+*   **Linux**: `~/.config/Dev Command Runner/configs/`
 
-```javascript
-const defaultCommands = {
-  categories: [
-    {
-      id: 'my-category',
-      name: 'La Meva Categoria',
-      icon: <Monitor size={20} />,
-      commands: [
-        { 
-          id: 'my-command', 
-          name: 'La Meva Comanda', 
-          command: 'npm run my-script', 
-          description: 'Descripció de la comanda', 
-          directory: './' 
-        }
-      ]
-    }
-  ]
-};
-```
+Pots fer còpies de seguretat d'aquests fitxers JSON o compartir-los amb el teu equip.
 
-## 🌍 Compatibilitat
+## 🤝 Contribució
 
-| Sistema Operatiu | Terminal per Defecte |
-|------------------|---------------------|
-| Windows 10/11    | PowerShell          |
-| macOS            | Terminal.app        |
-| Linux (GNOME)    | gnome-terminal      |
-| Linux (KDE)      | konsole             |
-| Linux (XFCE)     | xfce4-terminal      |
-| Linux (MATE)     | mate-terminal       |
-
-## 📝 Llicència
-
-Aquest projecte està sota la llicència especificada al fitxer [LICENSE](LICENSE).
-
-## 👤 Autor
-
-**Pep**
-
-## 🤝 Contribucions
-
-Les contribucions són benvingudes! Si tens suggeriments o millores, obre un issue o pull request.
+Les contribucions són benvingudes! Si tens idees per millorar l'eina, no dubtis a obrir un *issue* o enviar un *pull request*.
 
 ---
-
-**Nota**: Aquesta aplicació ha estat simplificada per ser més fiable i compatible amb tots els sistemes operatius. Ja no intenta escriure automàticament a la terminal, sinó que copia les comandes al portapapers perquè l'usuari les enganxi manualment.
+Desenvolupat amb ❤️ per Pep utilitzant Electron, React i Vite.

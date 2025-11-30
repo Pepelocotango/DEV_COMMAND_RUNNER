@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box, Plus, Edit2, Trash2, X, Save, ChevronDown, RotateCcw } from 'lucide-react';
+import { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box, Plus, Edit2, Trash2, X, Save, ChevronDown, RotateCcw, Settings, FileJson, HelpCircle } from 'lucide-react';
 
 // Comandes per defecte
 const defaultCommands = {
@@ -54,7 +54,7 @@ const defaultCommands = {
 
 // Helper per renderitzar icones
 const IconRenderer = ({ name, size = 20, className = "" }) => {
-  const icons = { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box };
+  const icons = { Terminal, FolderOpen, Sun, Moon, Copy, Smartphone, Monitor, ExternalLink, GitBranch, Package, Box, HelpCircle };
   const Icon = icons[name] || Box;
   return <Icon size={size} className={className} />;
 };
@@ -77,6 +77,14 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCommand, setEditingCommand] = useState(null);
   const [targetCategory, setTargetCategory] = useState(null);
+
+  // Config Manager State
+  const [isConfigManagerOpen, setIsConfigManagerOpen] = useState(false);
+  const [savedConfigs, setSavedConfigs] = useState([]);
+  const [newConfigName, setNewConfigName] = useState('');
+  const [currentConfig, setCurrentConfig] = useState({ name: 'No configurat', path: '' });
+  const [allCollapsed, setAllCollapsed] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('dev-command-runner-data', JSON.stringify(commandsData));
@@ -102,6 +110,16 @@ function App() {
     }));
   };
 
+  const toggleAllCategories = () => {
+    const newState = !allCollapsed;
+    const newCollapsed = {};
+    commandsData.categories.forEach(cat => {
+      newCollapsed[cat.id] = newState;
+    });
+    setCollapsedCategories(newCollapsed);
+    setAllCollapsed(newState);
+  };
+
   const resetDefaults = () => {
     if (window.confirm("Restaurar comandes per defecte?")) {
       setCommandsData(defaultCommands);
@@ -110,12 +128,16 @@ function App() {
   };
 
   const selectProjectFolder = async () => {
-    if (window.electron) {
-      const path = await window.electron.ipcRenderer.invoke('select-directory');
+    if (!window.electron) return;
+    try {
+      const path = await window.electron.selectDirectory();
       if (path) {
         setProjectPath(path);
         localStorage.setItem('projectPath', path);
       }
+    } catch (err) {
+      console.error('Error seleccionant carpeta del projecte:', err);
+      alert('Error seleccionant la carpeta del projecte.');
     }
   };
 
@@ -133,14 +155,15 @@ function App() {
     if (!projectPath) return alert("Selecciona carpeta!");
     let cwd = projectPath;
     if (directory && directory !== './' && directory !== '.') {
-      // Simple path join logic if path module not available in renderer
       cwd = projectPath.endsWith('\\') || projectPath.endsWith('/')
         ? projectPath + directory
         : projectPath + '/' + directory;
     }
-    if (window.electron) {
-      window.electron.ipcRenderer.invoke('open-terminal', cwd);
-    }
+    if (!window.electron) return;
+    window.electron.openTerminal(cwd).catch(err => {
+      console.error('Error obrint el terminal:', err);
+      alert('No s\'ha pogut obrir el terminal.');
+    });
   };
 
   const handleAddCommand = (catId) => {
@@ -183,6 +206,87 @@ function App() {
     setIsModalOpen(false);
   };
 
+  // --- CONFIG MANAGER FUNCTIONS ---
+
+  const loadConfigsList = async () => {
+    if (!window.electron) return;
+    try {
+      const configs = await window.electron.getConfigs();
+      setSavedConfigs(configs);
+      const configPath = await window.electron.getConfigPath();
+      setCurrentConfig(prev => ({
+        ...prev,
+        path: configPath
+      }));
+    } catch (err) {
+      console.error('Error carregant la llista de configuracions:', err);
+      alert('Error carregant la llista de configuracions.');
+    }
+  };
+
+  const handleOpenConfigManager = () => {
+    loadConfigsList();
+    setIsConfigManagerOpen(true);
+  };
+
+  const handleSaveConfig = async (e) => {
+    e.preventDefault();
+    if (!newConfigName.trim()) return;
+    if (!window.electron) return;
+    try {
+      const result = await window.electron.saveConfig({
+        name: newConfigName,
+        data: commandsData
+      });
+      if (result.success) {
+        setNewConfigName('');
+        setCurrentConfig({ name: newConfigName, path: '' });
+        loadConfigsList();
+        alert('Configuració guardada correctament!');
+      } else {
+        alert('Error guardant configuració: ' + (result.error || 'Error desconegut'));
+      }
+    } catch (err) {
+      console.error('Error guardant configuració:', err);
+      alert('Error guardant configuració.');
+    }
+  };
+
+  const handleLoadConfig = async (name) => {
+    if (!window.confirm(`Vols carregar la configuració "${name}"? Es perdran els canvis no guardats.`)) return;
+    if (!window.electron) return;
+    try {
+      const data = await window.electron.loadConfig(name);
+      if (data) {
+        setCommandsData(data);
+        const configPath = await window.electron.getConfigPath();
+        setCurrentConfig({ name, path: configPath });
+        setIsConfigManagerOpen(false);
+      } else {
+        alert('Error carregant la configuració.');
+      }
+    } catch (err) {
+      console.error('Error carregant la configuració:', err);
+      alert('Error carregant la configuració.');
+    }
+  };
+
+  const handleDeleteConfig = async (name) => {
+    if (!window.confirm(`Segur que vols esborrar la configuració "${name}"?`)) return;
+    if (!window.electron) return;
+    try {
+      const result = await window.electron.deleteConfig(name);
+      if (result.success) {
+        loadConfigsList();
+      } else {
+        alert('Error esborrant configuració: ' + (result.error || 'Error desconegut'));
+      }
+    } catch (err) {
+      console.error('Error esborrant configuració:', err);
+      alert('Error esborrant configuració.');
+    }
+  };
+
   const bgClass = theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-slate-50 text-slate-900';
   const cardClass = theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200';
   const btnHover = theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-slate-100';
@@ -192,11 +296,41 @@ function App() {
     <div className={`min-h-screen p-6 ${bgClass} font-sans transition-colors duration-300`}>
       <div className={`max-w-6xl mx-auto rounded-xl shadow-xl p-6 mb-8 ${cardClass} border`}>
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Terminal className="text-green-500" size={32} /> Dev Command Runner
-            </h1>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-3">
+                <Terminal className="text-green-500" size={32} /> Dev Command Runner
+              </h1>
+              <div className="mt-1 flex flex-col gap-1 text-sm opacity-90">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Configuració:</span>
+                  <span className="font-mono bg-slate-700/50 px-2 py-0.5 rounded">{currentConfig.name}</span>
+                </div>
+                {currentConfig.path && (
+                  <div className="flex items-start gap-2 text-xs opacity-60">
+                    <span>Ruta:</span>
+                    <span className="font-mono bg-slate-800/30 px-2 py-0.5 rounded break-all">{currentConfig.path}</span>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={toggleAllCategories}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600' : 'bg-slate-200 hover:bg-slate-300'}`}
+              >
+                {allCollapsed ? 'Expandir tot' : 'Replegar tot'}
+              </button>
+              <button onClick={handleOpenConfigManager} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-colors ${theme === 'dark' ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-purple-500 hover:bg-purple-600 text-white'}`}>
+                <Settings size={18} /> Configuracions
+              </button>
+              <button
+                onClick={() => setIsAboutOpen(true)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-colors ${theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-100' : 'bg-slate-200 hover:bg-slate-300 text-slate-900'}`}
+              >
+                <HelpCircle size={18} /> Ajuda
+              </button>
+              <div className="w-px h-8 bg-slate-500/30 mx-2"></div>
               <button onClick={resetDefaults} className={`p-2 rounded-full ${btnHover}`} title="Restaurar">
                 <RotateCcw size={20} className="text-slate-400 hover:text-red-400 transition-colors" />
               </button>
@@ -297,6 +431,7 @@ function App() {
         ))}
       </div>
 
+      {/* Modal Editar/Crear Comanda */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
           <div className={`w-full max-w-lg rounded-xl shadow-2xl p-6 ${cardClass} border animate-in fade-in zoom-in duration-200`}>
@@ -341,6 +476,114 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gestor Configuracions */}
+      {isConfigManagerOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-2xl rounded-xl shadow-2xl p-6 ${cardClass} border animate-in fade-in zoom-in duration-200 flex flex-col max-h-[80vh]`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Settings className="text-purple-500" /> Gestor de Configuracions
+              </h2>
+              <button onClick={() => setIsConfigManagerOpen(false)} className="p-2 hover:bg-slate-700 rounded-full"><X size={24} /></button>
+            </div>
+
+            <div className="flex flex-col gap-6 overflow-hidden">
+              {/* Guardar Nova */}
+              <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-black/20 border-slate-600' : 'bg-slate-50 border-slate-300'}`}>
+                <h3 className="font-bold mb-3 text-sm opacity-70 uppercase tracking-wider">Guardar Configuració Actual</h3>
+                <form onSubmit={handleSaveConfig} className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newConfigName}
+                    onChange={(e) => setNewConfigName(e.target.value)}
+                    placeholder="Nom de la configuració (ex: Projecte React)"
+                    className={`flex-1 p-3 rounded-lg border ${theme === 'dark' ? 'bg-slate-900 border-slate-600' : 'bg-white border-slate-300'}`}
+                  />
+                  <button type="submit" disabled={!newConfigName.trim()} className="px-6 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-bold flex items-center gap-2">
+                    <Save size={18} /> Guardar
+                  </button>
+                </form>
+              </div>
+
+              {/* Llista Configuracions */}
+              <div className="flex-1 overflow-y-auto min-h-[200px]">
+                <h3 className="font-bold mb-3 text-sm opacity-70 uppercase tracking-wider">Configuracions Guardades</h3>
+                {savedConfigs.length === 0 ? (
+                  <div className="text-center p-8 opacity-40 border-2 border-dashed border-slate-700 rounded-xl">
+                    No hi ha configuracions guardades.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3">
+                    {savedConfigs.map(configName => (
+                      <div key={configName} className={`p-4 rounded-lg border flex items-center justify-between group ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600 hover:border-purple-500' : 'bg-white border-slate-200 hover:border-purple-400'}`}>
+                        <div className="flex items-center gap-3">
+                          <FileJson className="text-purple-400" size={24} />
+                          <span className="font-bold text-lg">{configName}</span>
+                        </div>
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleLoadConfig(configName)}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold transition-colors"
+                          >
+                            Carregar
+                          </button>
+                          <button
+                            onClick={() => handleDeleteConfig(configName)}
+                            className="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sobre l'aplicació */}
+      {isAboutOpen && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-lg rounded-xl shadow-2xl p-6 ${cardClass} border animate-in fade-in zoom-in duration-200`}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <HelpCircle className="text-blue-400" />
+                Sobre Dev Command Runner
+              </h2>
+              <button onClick={() => setIsAboutOpen(false)} className="p-2 hover:bg-slate-700 rounded-full"><X size={24} /></button>
+            </div>
+
+            <div className="space-y-4 text-sm leading-relaxed">
+              <p>
+                Dev Command Runner és una petita eina d'escriptori per centralitzar les comandes típiques
+                de desenvolupament d'un projecte (install, build, scripts de mobile, helpers de Git, etc.).
+              </p>
+              <p>
+                Pots personalitzar les categories i comandes, guardar diferents configuracions i reutilitzar-les
+                fàcilment segons el projecte amb què estiguis treballant.
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-xs opacity-80 mt-4">
+                <div>
+                  <div className="font-semibold">Versió</div>
+                  <div className="font-mono">v1.0.0</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Autor</div>
+                  <div className="font-mono">Pep</div>
+                </div>
+              </div>
+              <div className="mt-4 text-xs opacity-70">
+                Consell: selecciona la carpeta arrel del projecte i fes servir les comandes com a plantilla;
+                copia-les o obre ràpidament un terminal en el directori corresponent.
+              </div>
+            </div>
           </div>
         </div>
       )}

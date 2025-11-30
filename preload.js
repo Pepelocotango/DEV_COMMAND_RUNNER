@@ -1,11 +1,11 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electron', {
-  ipcRenderer: {
-    invoke: (channel, data) => ipcRenderer.invoke(channel, data),
-    on: (channel, func) => ipcRenderer.on(channel, (event, ...args) => func(...args)),
-    off: (channel, func) => ipcRenderer.off(channel, func),
-    removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
-    send: (channel, data) => ipcRenderer.send(channel, data)
-  }
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  openTerminal: (cwd) => ipcRenderer.invoke('open-terminal', cwd),
+  getConfigs: () => ipcRenderer.invoke('get-configs'),
+  getConfigPath: () => ipcRenderer.invoke('get-config-path'),
+  saveConfig: (payload) => ipcRenderer.invoke('save-config', payload),
+  loadConfig: (name) => ipcRenderer.invoke('load-config', name),
+  deleteConfig: (name) => ipcRenderer.invoke('delete-config', name),
 });
