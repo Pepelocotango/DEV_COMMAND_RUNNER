@@ -151,7 +151,7 @@ function App() {
     }
   };
 
-  const openTerminal = (directory) => {
+  const openTerminal = async (directory) => {
     if (!projectPath) return alert("Selecciona carpeta!");
     let cwd = projectPath;
     if (directory && directory !== './' && directory !== '.') {
@@ -160,10 +160,15 @@ function App() {
         : projectPath + '/' + directory;
     }
     if (!window.electron) return;
-    window.electron.openTerminal(cwd).catch(err => {
+    try {
+      const result = await window.electron.openTerminal(cwd);
+      if (!result || result.success === false) {
+        alert(result?.msg || 'No s\'ha pogut obrir el terminal.');
+      }
+    } catch (err) {
       console.error('Error obrint el terminal:', err);
       alert('No s\'ha pogut obrir el terminal.');
-    });
+    }
   };
 
   const handleAddCommand = (catId) => {

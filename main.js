@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -79,21 +79,29 @@ ipcMain.handle('open-terminal', async (event, cwd) => {
     } else {
       // Linux: múltiples terminals amb fallback
       const terminals = [
-        'x-terminal-emulator',
+        'mate-terminal',
         'gnome-terminal',
+        'x-terminal-emulator',
         'konsole',
         'xfce4-terminal',
-        'mate-terminal',
         'xterm'
       ];
 
       let terminalOpened = false;
       for (const terminal of terminals) {
         try {
-          spawn(terminal, ['--working-directory', cwd], {
+          const whichResult = spawnSync('which', [terminal]);
+          if (whichResult.status !== 0) {
+            continue;
+          }
+
+          const child = spawn(terminal, [], {
+            cwd: cwd,
             detached: true,
             stdio: 'ignore'
-          }).unref();
+          });
+
+          child.unref();
           terminalOpened = true;
           break;
         } catch (e) {
