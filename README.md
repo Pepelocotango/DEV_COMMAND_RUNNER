@@ -1,3 +1,7 @@
+# Autor
+
+Pëp pepelocotango@gmail.com
+
 # Dev Command Runner 🚀
 
 **Dev Command Runner** és una eina d'escriptori moderna dissenyada per simplificar la gestió i execució de comandes de desenvolupament. Oblida't de recordar scripts complexos o de tenir múltiples terminals obertes; centralitza-ho tot en una interfície elegant i intuïtiva.
@@ -66,3 +70,7 @@ Les contribucions són benvingudes! Si tens idees per millorar l'eina, no dubtis
 
 ---
 Desenvolupat amb ❤️ per Pep utilitzant Electron, React i Vite.
+
+## Llicència
+
+Aquest projecte està llicenciat sota la llicència **GNU General Public License v3.0**. Consulta el fitxer [LICENSE](LICENSE) per obtenir més detalls.
